@@ -2,8 +2,8 @@ name: 24/7 Music Stream
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Restarts every 6 hours
-  workflow_dispatch:      # Allows manual start
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   stream:
@@ -32,7 +32,6 @@ jobs:
 
       - name: Run Streamer
         env:
-          # Make sure to add YOUTUBE_STREAM_KEY to your GitHub Repo Secrets!
           STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: python main.py
 
