@@ -5,20 +5,24 @@ import os
 # --- CONFIGURATION ---
 IMAGE_URL = "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/IMAGES/WASAFI%20MUSIC%20RADIO.png?download=true"
 
-# Add your links to this list
+# Add all your audio links here
 AUDIO_LINKS = [
     "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/MUSIC/WASAFI%20MUSIC%20RADIO.wav?download=true",
-    "https://INSERT_YOUR_SECOND_LINK_HERE.wav" 
+    "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/MUSIC/WASAFI%20MUSIC%20RADIO.wav?download=true" # Replace with your 2nd link
 ]
 
 STREAM_URL = "rtmp://a.rtmp.youtube.com/live2/"
-STREAM_KEY = "3zy9-9xek-e8vu-ef3z-c77u"
+# Reads from GitHub Secrets for security
+STREAM_KEY = os.getenv("STREAM_KEY", "3zy9-9xek-e8vu-ef3z-c77u") 
 STATE_FILE = "state.txt"
 
 def get_last_index():
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
-            return int(f.read().strip())
+        try:
+            with open(STATE_FILE, "r") as f:
+                return int(f.read().strip())
+        except:
+            return 0
     return 0
 
 def save_index(index):
@@ -29,40 +33,40 @@ def start_streaming():
     while True:
         current_index = get_last_index()
         
-        # Ensure the index isn't out of bounds if you removed a link
-        if current_index >= len(AUDIO_LINKS):
-            current_index = 0
-
+        # Loop through the links
         for i in range(current_index, len(AUDIO_LINKS)):
             audio_url = AUDIO_LINKS[i]
-            save_index(i) # Save current song index
+            save_index(i)
             
-            print(f"Streaming Audio {i+1} of {len(AUDIO_LINKS)}...")
+            print(f"Now Streaming Song #{i+1}...")
 
             # FFmpeg Command
+            # showwaves creates the visualizer
+            # colors=white@0.8 sets 80% transparency
             cmd = [
                 'ffmpeg',
                 '-re',
                 '-loop', '1', '-i', IMAGE_URL,
                 '-i', audio_url,
                 '-filter_complex', 
-                "[1:a]showwaves=s=1280x200:mode=line:colors=white@0.8[v_wave];" + 
-                "[0:v][v_wave]overlay=0:H-200:format=auto,format=yuv420p[outv]",
+                "[1:a]showwaves=s=1280x250:mode=line:colors=white@0.8[v_wave];" + 
+                "[0:v][v_wave]overlay=0:H-250:format=auto,format=yuv420p[outv]",
                 '-map', '[outv]', 
                 '-map', '1:a',
                 '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', '3000k',
+                '-maxrate', '3000k', '-bufsize', '6000k',
                 '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
                 '-f', 'flv', f"{STREAM_URL}{STREAM_KEY}"
             ]
 
             process = subprocess.Popen(cmd)
-            process.wait() # Wait for this song to finish
+            process.wait() # Wait for song to finish
             
-            # If it finishes naturally, move to the next
+            # Reset to beginning if list ends
             if i == len(AUDIO_LINKS) - 1:
-                save_index(0) # Reset to first song if we hit the end
+                save_index(0)
 
-        print("Playlist finished. Restarting from the beginning...")
+        print("Restarting playlist...")
         time.sleep(2)
 
 if __name__ == "__main__":
