@@ -3,16 +3,9 @@ import time
 import os
 
 # --- CONFIGURATION ---
-IMAGE_URL = "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/IMAGES/WASAFI%20MUSIC%20RADIO.png?download=true"
-
-# Add all your audio links here
-AUDIO_LINKS = [
-    "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/MUSIC/WASAFI%20MUSIC%20RADIO.wav?download=true",
-    "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/MUSIC/WASAFI%20MUSIC%20RADIO.wav?download=true" # Replace with your 2nd link
-]
-
+IMAGE_PATH = "background.png"  # Local file downloaded by GitHub Action
+AUDIO_FOLDER = "music"         # Local folder where songs are stored
 STREAM_URL = "rtmp://a.rtmp.youtube.com/live2/"
-# Reads from GitHub Secrets for security
 STREAM_KEY = os.getenv("STREAM_KEY", "3zy9-9xek-e8vu-ef3z-c77u") 
 STATE_FILE = "state.txt"
 
@@ -21,8 +14,7 @@ def get_last_index():
         try:
             with open(STATE_FILE, "r") as f:
                 return int(f.read().strip())
-        except:
-            return 0
+        except: return 0
     return 0
 
 def save_index(index):
@@ -31,40 +23,48 @@ def save_index(index):
 
 def start_streaming():
     while True:
+        # Get list of downloaded audio files
+        audio_files = sorted([f for f in os.listdir(AUDIO_FOLDER) if f.endswith('.wav')])
+        if not audio_files:
+            print("No audio files found! Waiting...")
+            time.sleep(10)
+            continue
+
         current_index = get_last_index()
         
-        for i in range(current_index, len(AUDIO_LINKS)):
-            audio_url = AUDIO_LINKS[i]
+        for i in range(current_index, len(audio_files)):
+            file_path = os.path.join(AUDIO_FOLDER, audio_files[i])
             save_index(i)
             
-            print(f"Now Streaming Song #{i+1}...")
+            print(f"Streaming Local File: {audio_files[i]}")
 
-            # Simplified FFmpeg Command without filter_complex
+            # FFmpeg Command optimized for local files
             cmd = [
                 'ffmpeg',
                 '-re',
-                '-loop', '1', '-i', IMAGE_URL,    # Input 0: Image
-                '-i', audio_url,                  # Input 1: Audio
-                '-c:v', 'libx264',                # Video Codec
-                '-preset', 'veryfast', 
-                '-b:v', '3000k',                  # Video Bitrate
-                '-maxrate', '3000k', 
-                '-bufsize', '6000k',
-                '-pix_fmt', 'yuv420p',            # Ensures compatibility with YouTube
-                '-c:a', 'aac',                    # Audio Codec
-                '-b:a', '128k', 
+                '-loop', '1', '-i', IMAGE_PATH,
+                '-i', file_path,
+                '-c:v', 'libx264',
+                '-preset', 'veryfast',
+                '-b:v', '3500k', 
+                '-maxrate', '3500k',
+                '-bufsize', '7000k',
+                '-pix_fmt', 'yuv420p',
+                '-g', '60',         # Keyframe every 2 seconds (good for YouTube)
+                '-c:a', 'aac',
+                '-b:a', '128k',
                 '-ar', '44100',
-                '-shortest',                       # Stop when the audio ends
+                '-shortest',
                 '-f', 'flv', f"{STREAM_URL}{STREAM_KEY}"
             ]
 
             process = subprocess.Popen(cmd)
             process.wait() 
             
-            if i == len(AUDIO_LINKS) - 1:
+            if i == len(audio_files) - 1:
                 save_index(0)
 
-        print("Restarting playlist...")
+        print("Looping playlist...")
         time.sleep(2)
 
 if __name__ == "__main__":
