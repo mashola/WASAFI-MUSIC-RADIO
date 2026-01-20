@@ -1,0 +1,45 @@
+name: 24/7 Music Stream
+
+on:
+  schedule:
+    # This restarts the stream every 6 hours automatically
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allows you to start it manually
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Restore Stream State
+        uses: actions/cache@v3
+        with:
+          path: state.txt
+          key: stream-state-${{ github.run_id }}
+          restore-keys: |
+            stream-state-
+
+      - name: Run Streamer
+        env:
+          # It is safer to put your stream key in GitHub Secrets
+          STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+        run: python main.py
+
+      - name: Save Stream State
+        if: always()
+        uses: actions/cache@v3
+        with:
+          path: state.txt
+          key: stream-state-${{ github.run_id }}
