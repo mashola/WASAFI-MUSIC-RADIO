@@ -33,36 +33,34 @@ def start_streaming():
     while True:
         current_index = get_last_index()
         
-        # Loop through the links
         for i in range(current_index, len(AUDIO_LINKS)):
             audio_url = AUDIO_LINKS[i]
             save_index(i)
             
             print(f"Now Streaming Song #{i+1}...")
 
-            # FFmpeg Command
-            # showwaves creates the visualizer
-            # colors=white@0.8 sets 80% transparency
+            # Simplified FFmpeg Command without filter_complex
             cmd = [
                 'ffmpeg',
                 '-re',
-                '-loop', '1', '-i', IMAGE_URL,
-                '-i', audio_url,
-                '-filter_complex', 
-                "[1:a]showwaves=s=1280x250:mode=line:colors=white@0.8[v_wave];" + 
-                "[0:v][v_wave]overlay=0:H-250:format=auto,format=yuv420p[outv]",
-                '-map', '[outv]', 
-                '-map', '1:a',
-                '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', '3000k',
-                '-maxrate', '3000k', '-bufsize', '6000k',
-                '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
+                '-loop', '1', '-i', IMAGE_URL,    # Input 0: Image
+                '-i', audio_url,                  # Input 1: Audio
+                '-c:v', 'libx264',                # Video Codec
+                '-preset', 'veryfast', 
+                '-b:v', '3000k',                  # Video Bitrate
+                '-maxrate', '3000k', 
+                '-bufsize', '6000k',
+                '-pix_fmt', 'yuv420p',            # Ensures compatibility with YouTube
+                '-c:a', 'aac',                    # Audio Codec
+                '-b:a', '128k', 
+                '-ar', '44100',
+                '-shortest',                       # Stop when the audio ends
                 '-f', 'flv', f"{STREAM_URL}{STREAM_KEY}"
             ]
 
             process = subprocess.Popen(cmd)
-            process.wait() # Wait for song to finish
+            process.wait() 
             
-            # Reset to beginning if list ends
             if i == len(AUDIO_LINKS) - 1:
                 save_index(0)
 
