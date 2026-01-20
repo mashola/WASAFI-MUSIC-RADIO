@@ -1,8 +1,8 @@
-name: 24/7 Music Stream
+name: 24/7 Stable Music Stream
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *' # Auto-restart every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -21,6 +21,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+
+      - name: Download Media Files
+        run: |
+          mkdir -p music
+          # Download Background Image
+          curl -L "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/IMAGES/WASAFI%20MUSIC%20RADIO.png?download=true" -o background.png
+          # Download Audio Files (Add more lines here if you have more links)
+          curl -L "https://huggingface.co/datasets/MASHOLA/YOUTUBE/resolve/main/MUSIC/WASAFI%20MUSIC%20RADIO.wav?download=true" -o music/song1.wav
+          # Example 2nd song:
+          # curl -L "YOUR_SECOND_LINK" -o music/song2.wav
 
       - name: Restore Stream State
         uses: actions/cache@v3
